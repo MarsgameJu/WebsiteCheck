@@ -1,54 +1,63 @@
-## Website Security Checker  
+Hier ist die überarbeitete README mit der Installation von Gobuster über Go:  
 
-Dieses Tool überprüft eine Website auf Sicherheitslücken wie SQL-Injection, XSS und fehlende HTTP-Sicherheitsheader. Zudem werden Technologien erkannt und bekannte Schwachstellen (CVEs) abgefragt.  
+---
 
-### 🚀 Installation  
+# Website Security Checker  
 
-1. **Abhängigkeiten installieren**  
-   Führe folgenden Befehl aus, um die benötigten Python-Pakete zu installieren:  
+This tool scans a website for security vulnerabilities such as SQL Injection, XSS, and missing HTTP security headers. It also detects technologies used on the site and checks for known vulnerabilities (CVEs).  
 
+## 🚀 Installation  
+
+1. **Navigate to the project directory**  
+   ```bash
+   cd /path/to/project
+   ```
+
+2. **Install dependencies**  
+   Run the following command to install the required Python packages:  
    ```bash
    pip install requests beautifulsoup4 python-whois colorama
    ```
 
-2. **Gobuster installieren**  
-   Da Gobuster ein externes Tool ist, muss es separat installiert werden:  
+3. **Install Gobuster**  
+   Gobuster is an external tool that needs to be installed separately.  
 
-   - **Linux (z. B. Kali Linux)**  
+   - **Linux (e.g., Kali Linux)**  
      ```bash
      sudo apt install gobuster
      ```
    - **Windows**  
-     Lade Gobuster von [GitHub](https://github.com/OJ/gobuster) herunter und füge es zum Pfad hinzu.  
+     Download Gobuster from [GitHub](https://github.com/OJ/gobuster) and add it to your system path.  
+   - **Install via Go** (Linux/Mac/Windows)  
+     If you have [Go]((https://go.dev/dl/)) installed, you can install Gobuster with:  
+     ```bash
+     go install github.com/OJ/gobuster/v3@latest
+     ```  
+     Ensure that `$GOPATH/bin` is in your system `PATH` so you can run Gobuster globally.  
 
-3. **Wordlist-Pfad anpassen**  
-   Öffne die Datei `main.py` und passe den Pfad zur Wordlist an, z. B.:  
-
+4. **Set the correct wordlist path**  
+   Open `main.py` and update the wordlist path:  
    ```python
-   wordlist_path = "C:/Pfad/zur/wordlist.txt"
+   wordlist_path = "C:/path/to/wordlist.txt"
    ```
 
-### ▶️ Nutzung  
+## ▶️ Usage  
 
-1. Navigiere in das Verzeichnis des Projekts:  
-   ```bash
-   cd /pfad/zum/projekt
-   ```
-2. Starte das Tool mit:  
+1. Start the tool with:  
    ```bash
    python main.py
    ```
-3. Gib die gewünschte Website (mit `https://`) ein, um die Analyse zu starten.  
+2. Enter the target website (including `https://`) to begin the scan.  
 
-### 📌 Funktionen  
+## 📌 Features  
 
-- Erkennt verwendete Technologien (CMS, Webserver)  
-- Prüft auf SQL-Injection und Cross-Site Scripting (XSS)  
-- Analysiert HTTP-Sicherheitsheader  
-- Sucht nach bekannten Schwachstellen (CVE-Datenbank)  
-- Führt Gobuster-Scans durch (sofern installiert)  
-- Zeigt WHOIS-Kontaktinformationen an  
+- Detects technologies (CMS, web server)  
+- Checks for SQL Injection and Cross-Site Scripting (XSS) vulnerabilities  
+- Analyzes HTTP security headers  
+- Fetches known vulnerabilities from the CVE database  
+- Runs Gobuster scans (if installed)  
+- Retrieves WHOIS contact information  
 
 ---
 
-Falls du Fragen oder Probleme hast, kannst du mich gerne fragen! 😊
+⚠ **Disclaimer:** This tool is for educational and ethical security testing purposes only!
