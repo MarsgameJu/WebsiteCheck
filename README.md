@@ -1,4 +1,4 @@
-Hier ist die überarbeitete README mit der Installation von Gobuster über Go:  
+
 
 ---
 
