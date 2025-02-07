@@ -3,13 +3,14 @@ import json
 import whois
 import subprocess
 import pyfiglet
+from requests.utils import quote
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin
 from colorama import Fore, Style, init
 import os
 
 # --- KONFIGURATION ---
 CVE_API = "https://services.nvd.nist.gov/rest/json/cves/1.0?keyword="
-
 
 def print_banner():
     banner = pyfiglet.figlet_format("VulnCHK")
@@ -48,70 +49,128 @@ def get_technologies(url):
 
 
 def check_sql_injection(url):
-    """Testet auf SQL-Injection über verschiedene Payloads."""
-    payloads = ["' OR 1=1--", "' OR 'a'='a", "'; DROP TABLE users--"]
+    """Testet auf SQL-Injection mit erweiterter Erkennung."""
+    payloads = [
+        "' OR 1=1--", "' OR 'a'='a", "' UNION SELECT NULL--",
+        "' UNION SELECT 1,2,3--", "' AND SLEEP(5)--", "' OR 'x'='x'--"
+    ]
     error_signatures = [
-        "sql syntax", "mysql_fetch", "sql error", "database error",
-        "you have an error in your sql syntax", "unterminated", "syntax error"
+        "sql syntax", "mysql_fetch", "database error",
+        "you have an error in your sql syntax", "syntax error",
+        "unterminated", "warning: pg_query()", "fatal error"
     ]
     for payload in payloads:
-        test_url = f"{url}?id={payload}"
+        test_url = f"{url}?id={quote(payload)}"
         try:
             response = requests.get(test_url, timeout=5)
-            text = response.text.lower()
-            if any(sig in text for sig in error_signatures):
+            if response.status_code == 500 or any(sig in response.text.lower() for sig in error_signatures):
                 return True
-        except requests.exceptions.RequestException as e:
-            print_status(f"Fehler beim Testen von SQL-Injection: {e}", Fore.RED)
+        except requests.exceptions.RequestException:
+            pass
     return False
 
 
 def check_xss(url):
-    """Testet auf Cross-Site Scripting (XSS) an mehreren gängigen Parametern."""
-    payload = "<script>alert('XSS')</script>"
-    parameters = ["search", "q", "input"]
-    for param in parameters:
-        test_url = f"{url}?{param}={payload}"
-        try:
-            response = requests.get(test_url, timeout=5)
-            if payload in response.text:
-                return True
-        except requests.exceptions.RequestException as e:
-            print_status(f"Fehler beim Testen von XSS: {e}", Fore.RED)
-    return False
+    """Testet auf Cross-Site Scripting (XSS) durch Scannen von Eingabefeldern und GET-Parametern."""
+    payloads = [
+        "<script>alert('XSS')</script>",
+        "\" onmouseover=alert('XSS') \"",
+        "<img src=x onerror=alert(1)>",
+        "<svg onload=alert('XSS')>"
+    ]
 
-
-def check_cve(technology):
-    """Prüft, ob zu einer Technologie bekannte CVEs existieren."""
-    if not technology:
-        return []
     try:
-        response = requests.get(CVE_API + technology, timeout=5)
+        # Webseite abrufen und parsen
+        response = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        if response.status_code != 200:
+            print_status(f"[!] Fehler beim Abrufen der Seite ({response.status_code})", Fore.RED)
+            return False
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        # Eingabefelder und Formulare analysieren
+        input_fields = [tag.get("name") for tag in soup.find_all("input") if tag.get("name")]
+        forms = soup.find_all("form")
+
+        if not input_fields and not forms:
+            print_status("[+] Keine Eingabefelder oder Formulare gefunden.", Fore.YELLOW)
+
+        vulnerable = False
+
+        # GET-Parameter testen
+        for param in input_fields:
+            for payload in payloads:  # Schleife durch die Payloads
+                test_url = f"{url}?{param}={payload}"
+                response = requests.get(test_url, timeout=5)
+                if payload in response.text:
+                    print_status(f"[!] XSS gefunden über Parameter: {param}", Fore.RED)
+                    vulnerable = True
+
+        # Formulare mit POST testen
+        for form in forms:
+            action = urljoin(url, form.get("action", "/"))  # Hier wird action richtig gesetzt
+            method = form.get("method", "get").lower()
+            inputs = {tag.get("name", ""): payload for tag in form.find_all("input") if tag.get("name")}
+
+            if method == "post":
+                response = requests.post(action, data=inputs, timeout=5)
+            else:
+                response = requests.get(action, params=inputs, timeout=5)
+
+            if payload in response.text:
+                print_status(f"[!] XSS gefunden über Formular mit Action: {action}", Fore.RED)
+                vulnerable = True
+
+        return vulnerable
+
+    except requests.exceptions.RequestException as e:
+        print_status(f"Fehler beim Testen von XSS: {e}", Fore.RED)
+        return False
+
+
+def check_cve(technology, version=""):
+    """Prüft CVEs für eine Technologie + Version."""
+    query = quote(technology)
+    if version:
+        query += f"%20{quote(version)}"
+
+    query_url = f"https://services.nvd.nist.gov/rest/json/cves/2.0?keyword={query}"
+    try:
+        response = requests.get(query_url, timeout=5)
+        if response.status_code != 200:
+            return []
+
         data = response.json()
-        cve_list = [item.get("cve", {}).get("CVE_data_meta", {}).get("ID", "Unbekannt")
-                    for item in data.get("result", {}).get("CVE_Items", [])]
+        cve_list = [
+            item["cve"]["id"]
+            for item in data.get("vulnerabilities", [])
+        ]
         return cve_list
-    except Exception as e:
-        print_status(f"Fehler beim Abrufen der CVE-Daten: {e}", Fore.RED)
+    except (requests.exceptions.RequestException, json.JSONDecodeError):
         return []
 
 
 def check_http_headers(url):
-    """Prüft auf kritische HTTP-Sicherheitsheader."""
+    """Prüft HTTP-Sicherheitsheader und warnt vor schlechten Konfigurationen."""
     try:
         response = requests.get(url, timeout=5)
         headers = response.headers
-        missing = []
-        critical = {
-            "Strict-Transport-Security": "Schützt vor Downgrade-Angriffen",
-            "X-Content-Type-Options": "Verhindert MIME-Type-Sniffing",
-            "X-Frame-Options": "Schützt vor Clickjacking",
-            "X-XSS-Protection": "Schützt vor einfachen XSS-Angriffen"
+        issues = []
+
+        header_checks = {
+            "Strict-Transport-Security": "Keine HSTS-Absicherung.",
+            "X-Content-Type-Options": "Kein Schutz gegen MIME-Sniffing.",
+            "X-Frame-Options": "Kein Schutz gegen Clickjacking.",
+            "X-XSS-Protection": "Kein Schutz gegen XSS-Angriffe.",
+            "Content-Security-Policy": "Keine CSP-Richtlinie gesetzt.",
+            "Referrer-Policy": "Keine Referrer-Policy definiert."
         }
-        for header, desc in critical.items():
+
+        for header, warning in header_checks.items():
             if header not in headers:
-                missing.append(f"{header} ({desc})")
-        return missing if missing else None
+                issues.append(f"{header}: {warning}")
+
+        return issues if issues else None
     except requests.exceptions.RequestException as e:
         print_status(f"Fehler beim Überprüfen der HTTP-Header: {e}", Fore.RED)
         return None
@@ -130,15 +189,23 @@ def get_contact_info(domain):
 
 def run_gobuster(url):
     """Führt einen Gobuster-Scan durch."""
-    wordlist_path = "path/to/file/wordlist.txt"
+    wordlist_path = "D:/04_Anderes/Tools/VulnCHK/wordlist.txt"
     if not os.path.exists(wordlist_path):
         return "Fehler: Wordlist-Datei nicht gefunden."
+
+    # Prüfe, ob Gobuster installiert ist
+    try:
+        subprocess.run(["gobuster", "--version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except FileNotFoundError:
+        return "Fehler: Gobuster ist nicht installiert."
+
     cmd = ["gobuster", "dir", "-u", url, "-w", wordlist_path]
     try:
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return result.stdout if result.returncode == 0 else result.stderr
     except Exception as e:
         return f"Fehler beim Ausführen von Gobuster: {e}"
+
 
 
 def generate_report(url, tech, cve, contact, sql_inj, xss, gobuster_results, http_headers_info):
@@ -177,7 +244,6 @@ Sicherheitslücken:"""
 Gobuster-Ergebnisse:
 {gobuster_results}
 
-########################################################################################################################
 """
     return report
 
