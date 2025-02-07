@@ -18,6 +18,9 @@ This tool scans a website for security vulnerabilities such as SQL Injection, XS
    ```bash
    pip install requests beautifulsoup4 python-whois colorama
    ```
+   ```bash
+   pip install pyfiglet
+   ```
 
 3. **Install Gobuster**  
    Gobuster is an external tool that needs to be installed separately.  
