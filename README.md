@@ -27,7 +27,8 @@ This tool scans a website for security vulnerabilities such as SQL Injection, XS
      sudo apt install gobuster
      ```
    - **Windows**  
-     Download Gobuster from [GitHub](https://github.com/OJ/gobuster) and add it to your system path.  
+     Download Gobuster from [GitHub](https://github.com/OJ/gobuster) and add it to your system path.
+     
    - **Install via Go** (Linux/Mac/Windows)  
      If you have [Go]((https://go.dev/dl/)) installed, you can install Gobuster with:  
      ```bash
