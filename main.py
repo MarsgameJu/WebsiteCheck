@@ -107,7 +107,7 @@ def get_contact_info(domain):
 
 def run_gobuster(url):
     """Führt einen Gobuster-Scan durch."""
-    wordlist_path = "C:/Users/marsg/PycharmProjects/OBSINT-Test1/.venv/wordlist.txt"
+    wordlist_path = "path/to/file/wordlist.txt"
     if not os.path.exists(wordlist_path):
         return "Fehler: Wordlist-Datei nicht gefunden."
 
