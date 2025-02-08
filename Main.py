@@ -182,20 +182,20 @@ def run_gobuster(url):
     """Führt einen Gobuster-Scan durch."""
     wordlist_path = "Path/to/File/wordlist.txt"
     if not os.path.exists(wordlist_path):
-        return "[X] Error Wordlist file not found."
+        return print_status("[X] Error Wordlist file not found.", Fore.RED)
 
     # Prüfe, ob Gobuster installiert ist
     try:
         subprocess.run(["gobuster", "--version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     except FileNotFoundError:
-        return "[X] Error Gobuster is not installed."
+        return print_status("[X] Error Gobuster is not installed.", Fore.RED)
 
     cmd = ["gobuster", "dir", "-u", url, "-w", wordlist_path]
     try:
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return result.stdout if result.returncode == 0 else result.stderr
     except Exception as e:
-        return f"[X] Error when running Gobuster: {e}"
+        return print_status("[X] Error when running Gobuster: {e}", Fore.RED)
 
 
 
