@@ -189,7 +189,7 @@ def get_contact_info(domain):
 
 def run_gobuster(url):
     """Führt einen Gobuster-Scan durch."""
-    wordlist_path = "D:/04_Anderes/Tools/VulnCHK/wordlist.txt"
+    wordlist_path = "Path/to/File/wordlist.txt"
     if not os.path.exists(wordlist_path):
         return "Fehler: Wordlist-Datei nicht gefunden."
 
