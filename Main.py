@@ -15,13 +15,10 @@ CVE_API = "https://services.nvd.nist.gov/rest/json/cves/1.0?keyword="
 def print_banner():
     banner = pyfiglet.figlet_format("VulnCHK")
     print(banner)
-
-
 print_banner()
 
 
 def init_colorama():
-    """Initialisiert colorama für farbige Ausgaben."""
     init(autoreset=True)
 
 
@@ -30,7 +27,6 @@ def print_status(message, color=Fore.WHITE):
 
 
 def get_technologies(url):
-    """Analysiert die Technologien einer Website."""
     try:
         response = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
         tech = {}
@@ -40,16 +36,15 @@ def get_technologies(url):
         elif "Joomla" in response.text:
             tech["CMS"] = "Joomla"
         # Hier können weitere Erkennungen ergänzt werden.
-        server = response.headers.get("Server", "Unbekannt")
+        server = response.headers.get("Server", "Unknown")
         tech["Webserver"] = server
         return tech
     except requests.exceptions.RequestException as e:
-        print_status(f"Fehler beim Abrufen der Website: {e}", Fore.RED)
+        print_status(f"[X] Error retrieving the website: {e}", Fore.RED)
         return None
 
 
 def check_sql_injection(url):
-    """Testet auf SQL-Injection mit erweiterter Erkennung."""
     payloads = [
         "' OR 1=1--", "' OR 'a'='a", "' UNION SELECT NULL--",
         "' UNION SELECT 1,2,3--", "' AND SLEEP(5)--", "' OR 'x'='x'--"
@@ -71,7 +66,6 @@ def check_sql_injection(url):
 
 
 def check_xss(url):
-    """Testet auf Cross-Site Scripting (XSS) durch Scannen von Eingabefeldern und GET-Parametern."""
     payloads = [
         "<script>alert('XSS')</script>",
         "\" onmouseover=alert('XSS') \"",
@@ -83,7 +77,7 @@ def check_xss(url):
         # Webseite abrufen und parsen
         response = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
         if response.status_code != 200:
-            print_status(f"[!] Fehler beim Abrufen der Seite ({response.status_code})", Fore.RED)
+            print_status(f"[X] Error retrieving the website({response.status_code})", Fore.RED)
             return False
 
         soup = BeautifulSoup(response.text, "html.parser")
@@ -93,7 +87,7 @@ def check_xss(url):
         forms = soup.find_all("form")
 
         if not input_fields and not forms:
-            print_status("[+] Keine Eingabefelder oder Formulare gefunden.", Fore.YELLOW)
+            print_status("[+] No input fields or forms found.", Fore.YELLOW)
 
         vulnerable = False
 
@@ -103,7 +97,7 @@ def check_xss(url):
                 test_url = f"{url}?{param}={payload}"
                 response = requests.get(test_url, timeout=5)
                 if payload in response.text:
-                    print_status(f"[!] XSS gefunden über Parameter: {param}", Fore.RED)
+                    print_status(f"[!] XSS found via parameter: {param}", Fore.RED)
                     vulnerable = True
 
         # Formulare mit POST testen
@@ -118,18 +112,17 @@ def check_xss(url):
                 response = requests.get(action, params=inputs, timeout=5)
 
             if payload in response.text:
-                print_status(f"[!] XSS gefunden über Formular mit Action: {action}", Fore.RED)
+                print_status(f"[!] XSS found via form with action: {action}", Fore.LIGHTRED_EX)
                 vulnerable = True
 
         return vulnerable
 
     except requests.exceptions.RequestException as e:
-        print_status(f"Fehler beim Testen von XSS: {e}", Fore.RED)
+        print_status(f"[X] Error when testing XSS: {e}", Fore.RED)
         return False
 
 
 def check_cve(technology, version=""):
-    """Prüft CVEs für eine Technologie + Version."""
     query = quote(technology)
     if version:
         query += f"%20{quote(version)}"
@@ -151,19 +144,18 @@ def check_cve(technology, version=""):
 
 
 def check_http_headers(url):
-    """Prüft HTTP-Sicherheitsheader und warnt vor schlechten Konfigurationen."""
     try:
         response = requests.get(url, timeout=5)
         headers = response.headers
         issues = []
 
         header_checks = {
-            "Strict-Transport-Security": "Keine HSTS-Absicherung.",
-            "X-Content-Type-Options": "Kein Schutz gegen MIME-Sniffing.",
-            "X-Frame-Options": "Kein Schutz gegen Clickjacking.",
-            "X-XSS-Protection": "Kein Schutz gegen XSS-Angriffe.",
-            "Content-Security-Policy": "Keine CSP-Richtlinie gesetzt.",
-            "Referrer-Policy": "Keine Referrer-Policy definiert."
+            "\n - Strict-Transport-Security": "Missing HSTS header",
+            "\n - X-Content-Type-Options": "Missing X-Content-Type-Options",
+            "\n - X-Frame-Options": "Missing X-Frame-Options",
+            "\n - X-XSS-Protection": "Missing X-XSS-Protection",
+            "\n - Content-Security-Policy": "Missing Content-Security-Policy",
+            "\n - Referrer-Policy": "Missing Referrer-Policy"
         }
 
         for header, warning in header_checks.items():
@@ -172,76 +164,74 @@ def check_http_headers(url):
 
         return issues if issues else None
     except requests.exceptions.RequestException as e:
-        print_status(f"Fehler beim Überprüfen der HTTP-Header: {e}", Fore.RED)
+        print_status(f"[X] Error when checking the HTTP headers: {e}", Fore.RED)
         return None
 
 
 def get_contact_info(domain):
-    """Liefert Kontaktinformationen via WHOIS."""
     try:
         domain_info = whois.whois(domain)
         emails = domain_info.emails
-        return emails if emails else "Keine E-Mail gefunden"
+        return emails if emails else "No e-mail found"
     except Exception as e:
-        print_status(f"Fehler beim Abrufen der WHOIS-Daten: {e}", Fore.RED)
-        return "Fehler beim Abrufen der WHOIS-Daten"
+        print_status(f"[X] Fehler beim Abrufen der WHOIS-Daten: {e}", Fore.RED)
+        return "[X] Fehler beim Abrufen der WHOIS-Daten"
 
 
 def run_gobuster(url):
     """Führt einen Gobuster-Scan durch."""
     wordlist_path = "Path/to/File/wordlist.txt"
     if not os.path.exists(wordlist_path):
-        return "Fehler: Wordlist-Datei nicht gefunden."
+        return "[X] Error Wordlist file not found."
 
     # Prüfe, ob Gobuster installiert ist
     try:
         subprocess.run(["gobuster", "--version"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     except FileNotFoundError:
-        return "Fehler: Gobuster ist nicht installiert."
+        return "[X] Error Gobuster is not installed."
 
     cmd = ["gobuster", "dir", "-u", url, "-w", wordlist_path]
     try:
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         return result.stdout if result.returncode == 0 else result.stderr
     except Exception as e:
-        return f"Fehler beim Ausführen von Gobuster: {e}"
+        return f"[X] Error when running Gobuster: {e}"
 
 
 
 def generate_report(url, tech, cve, contact, sql_inj, xss, gobuster_results, http_headers_info):
-    """Erstellt einen strukturierten Bericht."""
     vulnerabilities = []
     vulnerabilities.append(
-        f"{Fore.RED}SQL-Injection: Gefunden{Style.RESET_ALL}" if sql_inj
-        else f"{Fore.GREEN}SQL-Injection: Sicher{Style.RESET_ALL}"
+        f"{Fore.RED}SQL-Injection: Found{Style.RESET_ALL}" if sql_inj
+        else f"{Fore.GREEN}SQL-Injection: Safe{Style.RESET_ALL}"
     )
     vulnerabilities.append(
-        f"{Fore.RED}XSS: Gefunden{Style.RESET_ALL}" if xss
-        else f"{Fore.GREEN}XSS: Sicher{Style.RESET_ALL}"
+        f"{Fore.RED}XSS: Found{Style.RESET_ALL}" if xss
+        else f"{Fore.GREEN}XSS: Safe{Style.RESET_ALL}"
     )
     vulnerabilities.append(
-        f"{Fore.RED}Bekannte CVEs: {', '.join(cve)}{Style.RESET_ALL}" if cve
-        else f"{Fore.GREEN}Keine bekannten CVEs gefunden{Style.RESET_ALL}"
+        f"{Fore.RED}known CVEs: {', '.join(cve)}{Style.RESET_ALL}" if cve
+        else f"{Fore.GREEN}No known CVEs found{Style.RESET_ALL}"
     )
     if http_headers_info:
         vulnerabilities.append(
-            f"{Fore.RED}Fehlende Sicherheitsheader:\n    {', '.join(http_headers_info)}{Style.RESET_ALL}"
+            f"{Fore.RED}Missing security headers:\n    {', '.join(http_headers_info)}{Style.RESET_ALL}"
         )
 
-    report = f"""{Style.RESET_ALL}[+] Sicherheitsbericht für {url}
+    report = f"""{Style.RESET_ALL}[+] Vulnerability report for {url}
 ########################################################################################################################
-Gefundene Technologien:
+Technologies found:
 {json.dumps(tech, indent=2)}
 
-Kontaktinformationen:
+Contact information:
 {contact}
 
-Sicherheitslücken:"""
+Security vulnerabilities:"""
     for vuln in vulnerabilities:
         report += f"\n    {vuln}"
     report += f"""
 
-Gobuster-Ergebnisse:
+Gobuster results:
 {gobuster_results}
 
 """
@@ -250,35 +240,34 @@ Gobuster-Ergebnisse:
 
 def main():
     init_colorama()
-    website = input("🔍 Gebe eine Website (mit https://) ein: ").strip()
+    website = input("🔍 Enter a website (with https://): ").strip()
 
-    use_gobuster = input("\nMöchtest du den Gobuster-Scan durchführen? [y/n]: ").strip().lower()
+    use_gobuster = input("\nRun Gobuster? [y/n]: ").strip().lower()
     while use_gobuster not in ["y", "n"]:
-        use_gobuster = input("Bitte gib 'y' für Ja oder 'n' für Nein ein: ").strip().lower()
+        use_gobuster = input("Please enter 'y' for yes or 'n' for no: ").strip().lower()
 
-    print_status("[+] Scanne Website...", Fore.YELLOW)
+    print_status("[+] Scan website...", Fore.YELLOW)
     technologies = get_technologies(website)
     if not technologies:
-        print_status("[!] Website nicht erreichbar oder unbekannt.", Fore.RED)
+        print_status("[X] Website not available or unknown.", Fore.RED)
         return
 
     sql_injection = check_sql_injection(website)
     xss = check_xss(website)
-    print_status("[+] Schwachstellen-Check abgeschlossen.", Fore.YELLOW)
+    print_status("[+] Vulnerability check completed.", Fore.YELLOW)
 
     http_headers_info = check_http_headers(website)
-    print_status("[+] HTTP-Header-Check abgeschlossen.", Fore.YELLOW)
+    print_status("[+] HTTP header check completed.", Fore.YELLOW)
 
-    gobuster_results = "Gobuster-Scan übersprungen."
+    gobuster_results = "Gobuster scan skipped."
     if use_gobuster == "y":
         gobuster_results = run_gobuster(website)
-        print_status("[+] Gobuster-Scan abgeschlossen.", Fore.YELLOW)
+        print_status("[+] Gobuster scan completed.", Fore.YELLOW)
 
     domain = website.split("//")[-1].split("/")[0]
     contact = get_contact_info(domain)
-    print_status("[+] Kontaktinformationen abgerufen.", Fore.YELLOW)
+    print_status("[+] Contact information retrieved.", Fore.YELLOW)
 
-    # Prüfe CVEs anhand des erkannten CMS, ansonsten des Webservers
     tech_to_check = technologies.get("CMS") or technologies.get("Webserver", "")
     cve = check_cve(tech_to_check)
 
