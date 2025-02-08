@@ -2,7 +2,7 @@
 
 ---
 
-# Website Security Checker  
+# Website Vulnerability Checker  
 
 This tool scans a website for security vulnerabilities such as SQL Injection, XSS, and missing HTTP security headers. It also detects technologies used on the site and checks for known vulnerabilities (CVEs).  
 
