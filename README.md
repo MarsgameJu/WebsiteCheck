@@ -1,5 +1,4 @@
 
-
 ---
 
 # Website Vulnerability Checker  
@@ -47,11 +46,20 @@ This tool scans a website for security vulnerabilities such as SQL Injection, XS
 
 ## ▶️ Usage  
 
-1. Start the tool with:  
+1. **Run the script**  
+   If your script is in a different directory, update the path in the `.bat` file:  
+
+   ```batch
+   python "C:\path\to\your\script\Main.py"
+   ```
+
+   Replace `C:\path\to\your\script\Main.py` with the actual path to your script.  
+
+2. Start the tool with:  
    ```bash
    python main.py
    ```
-2. Enter the target website (including `https://`) to begin the scan.  
+3. Enter the target website (including `https://`) to begin the scan.  
 
 ## 📌 Features  
 
@@ -64,4 +72,6 @@ This tool scans a website for security vulnerabilities such as SQL Injection, XS
 
 ---
 
-⚠ **Disclaimer:** This tool is for educational and ethical security testing purposes only!
+⚠ **Disclaimer:** This tool is for educational and ethical security testing purposes only!  
+
+---
