@@ -10,12 +10,12 @@ if %errorlevel% neq 0 (
     exit /b
 )
 
-if exist path\to\file\.venv\Scripts\activate (
+if exist .venv\Scripts\activate (
     echo Activating virtual environment...
-    call path\to\File\.venv\Scripts\activate
+    call .venv\Scripts\activate
 )
 
-python path\to\File\Main.py
+python Main.py
 
 echo ==================================================
 echo Scan completed.

@@ -12,9 +12,12 @@ import os
 # --- KONFIGURATION ---
 CVE_API = "https://services.nvd.nist.gov/rest/json/cves/1.0?keyword="
 
+
 def print_banner():
     banner = pyfiglet.figlet_format("VulnCHK")
     print(banner)
+
+
 print_banner()
 
 
@@ -30,12 +33,10 @@ def get_technologies(url):
     try:
         response = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
         tech = {}
-        # Prüfe auf bekannte CMS-Indikatoren
         if "wp-content" in response.text:
             tech["CMS"] = "WordPress"
         elif "Joomla" in response.text:
             tech["CMS"] = "Joomla"
-        # Hier können weitere Erkennungen ergänzt werden.
         server = response.headers.get("Server", "Unknown")
         tech["Webserver"] = server
         return tech
@@ -74,7 +75,6 @@ def check_xss(url):
     ]
 
     try:
-        # Webseite abrufen und parsen
         response = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
         if response.status_code != 200:
             print_status(f"[X] Error retrieving the website({response.status_code})", Fore.RED)
@@ -82,7 +82,6 @@ def check_xss(url):
 
         soup = BeautifulSoup(response.text, "html.parser")
 
-        # Eingabefelder und Formulare analysieren
         input_fields = [tag.get("name") for tag in soup.find_all("input") if tag.get("name")]
         forms = soup.find_all("form")
 
@@ -91,18 +90,16 @@ def check_xss(url):
 
         vulnerable = False
 
-        # GET-Parameter testen
         for param in input_fields:
-            for payload in payloads:  # Schleife durch die Payloads
+            for payload in payloads:
                 test_url = f"{url}?{param}={payload}"
                 response = requests.get(test_url, timeout=5)
                 if payload in response.text:
                     print_status(f"[!] XSS found via parameter: {param}", Fore.RED)
                     vulnerable = True
 
-        # Formulare mit POST testen
         for form in forms:
-            action = urljoin(url, form.get("action", "/"))  # Hier wird action richtig gesetzt
+            action = urljoin(url, form.get("action", "/"))
             method = form.get("method", "get").lower()
             inputs = {tag.get("name", ""): payload for tag in form.find_all("input") if tag.get("name")}
 
@@ -180,7 +177,7 @@ def get_contact_info(domain):
 
 def run_gobuster(url):
     """Führt einen Gobuster-Scan durch."""
-    wordlist_path = "Path/to/File/wordlist.txt"
+    wordlist_path = "path/to/File/Wordlist.txt"
     if not os.path.exists(wordlist_path):
         return print_status("[X] Error Wordlist file not found.", Fore.RED)
 
@@ -196,7 +193,6 @@ def run_gobuster(url):
         return result.stdout if result.returncode == 0 else result.stderr
     except Exception as e:
         return print_status("[X] Error when running Gobuster: {e}", Fore.RED)
-
 
 
 def generate_report(url, tech, cve, contact, sql_inj, xss, gobuster_results, http_headers_info):
@@ -219,7 +215,9 @@ def generate_report(url, tech, cve, contact, sql_inj, xss, gobuster_results, htt
         )
 
     report = f"""{Style.RESET_ALL}[+] Vulnerability report for {url}
+
 ########################################################################################################################
+
 Technologies found:
 {json.dumps(tech, indent=2)}
 
